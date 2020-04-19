@@ -37,8 +37,20 @@ namespace seal
                 void *header_ptr,
                 std::ostream &out_stream,
                 MemoryPoolHandle pool);
+            
+            void write_header_deflate_buffer2(
+                const IntArray<SEAL_BYTE> &in,
+                void *header_ptr,
+                std::ostream &out_stream,
+                MemoryPoolHandle pool);
 
             int deflate_array(
+                const IntArray<SEAL_BYTE> &in,
+                IntArray<SEAL_BYTE> &out,
+                MemoryPoolHandle pool);
+
+            
+            int deflate_array2(
                 const IntArray<SEAL_BYTE> &in,
                 IntArray<SEAL_BYTE> &out,
                 MemoryPoolHandle pool);

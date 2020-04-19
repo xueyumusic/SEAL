@@ -598,6 +598,31 @@ namespace seal
                     break;
                 }
 #endif
+            case compr_mode_type::zstd:
+                {
+                    // First save_members to a temporary byte stream; set the size
+                    // of the temporary stream to be right from the start to avoid
+                    // extra reallocs.
+                    SafeByteBuffer safe_buffer(
+                        raw_size - static_cast<streamoff>(sizeof(SEALHeader)));
+                    iostream temp_stream(&safe_buffer);
+                    temp_stream.exceptions(ios_base::badbit | ios_base::failbit);
+                    save_members(temp_stream);
+
+                    auto safe_pool(MemoryManager::GetPool(mm_prof_opt::FORCE_NEW, true));
+
+                    // Create temporary aliasing IntArray to wrap safe_buffer
+                    IntArray<SEAL_BYTE> safe_buffer_array(
+                        Pointer<SEAL_BYTE>::Aliasing(safe_buffer.data()),
+                        static_cast<size_t>(temp_stream.tellp()), false, safe_pool);
+
+                    // After compression, write_header_deflate_buffer will write the
+                    // final size to the given header and write the header to stream,
+                    // before writing the compressed output.
+                    ztools::write_header_deflate_buffer2(safe_buffer_array,
+                        reinterpret_cast<void*>(&header), stream, safe_pool);
+                    break;
+                }
             default:
                 throw logic_error("unsupported compression mode");
             }

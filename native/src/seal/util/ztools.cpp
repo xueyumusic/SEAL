@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <zlib.h>
+#include <zstd.h>
 #include <unordered_map>
 #include "seal/serialization.h"
 #include "seal/util/ztools.h"
@@ -247,6 +248,85 @@ namespace seal
                 in_stream.exceptions(in_stream_except_mask);
                 out_stream.exceptions(out_stream_except_mask);
                 return result == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
+            }
+
+            int deflate_array2(
+                const IntArray<SEAL_BYTE> &in,
+                IntArray<SEAL_BYTE> &out,
+                MemoryPoolHandle pool)
+            {
+                if (!pool)
+                {
+                    throw invalid_argument("pool is uninitialized");
+                }
+
+                streamoff in_size = safe_cast<streamoff>(in.size());
+                int result, flush;
+
+                size_t out_size = ZSTD_compressBound(safe_cast<uLong>(in_size));
+                out.resize(out_size);
+
+                size_t const cSize = ZSTD_compress(reinterpret_cast<unsigned char*>(out.begin()),
+                    out_size,
+                    reinterpret_cast<unsigned char*>(const_cast<SEAL_BYTE*>(in.cbegin())),
+                    in_size,
+                    3
+                    );
+                //result = deflate(&zstream, flush);
+
+                // Update out_size to true value
+                out_size = cSize;
+
+                // Now resize out to the right size
+                out.resize(out_size);
+
+                return Z_OK;
+            }
+
+            void write_header_deflate_buffer2(
+                const IntArray<SEAL_BYTE> &in,
+                void *header_ptr,
+                ostream &out_stream,
+                MemoryPoolHandle pool)
+            {
+                Serialization::SEALHeader &header =
+                    *reinterpret_cast<Serialization::SEALHeader*>(header_ptr);
+
+                IntArray<SEAL_BYTE> out_array(pool);
+                auto ret = deflate_array2(in, out_array, move(pool));
+                if (Z_OK != ret)
+                {
+                    throw logic_error("deflate failed");
+                }
+
+                // Populate the header
+                header.compr_mode = compr_mode_type::zstd;
+                header.size = safe_cast<uint32_t>(add_safe(
+                    sizeof(Serialization::SEALHeader),
+                    out_array.size()));
+
+                auto old_except_mask = out_stream.exceptions();
+                try
+                {
+                    // Throw exceptions on ios_base::badbit and ios_base::failbit
+                    out_stream.exceptions(ios_base::badbit | ios_base::failbit);
+
+                    // Write the header and the data
+                    out_stream.write(
+                        reinterpret_cast<const char*>(&header),
+                        sizeof(Serialization::SEALHeader));
+                    out_stream.write(
+                        reinterpret_cast<const char*>(out_array.cbegin()),
+                        safe_cast<streamsize>(out_array.size()));
+
+                }
+                catch (...)
+                {
+                    out_stream.exceptions(old_except_mask);
+                    throw;
+                }
+
+                out_stream.exceptions(old_except_mask);
             }
 
             void write_header_deflate_buffer(

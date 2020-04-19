@@ -26,6 +26,7 @@ namespace seal
         // Use Deflate compression
         deflate = 1,
 #endif
+        zstd = 2,
     };
 
     /**
@@ -87,6 +88,7 @@ namespace seal
 #ifdef SEAL_USE_ZLIB
             case static_cast<std::uint8_t>(compr_mode_type::deflate) :
 #endif
+            case static_cast<std::uint8_t>(compr_mode_type::zstd):
                 return true;
             }
             return false;

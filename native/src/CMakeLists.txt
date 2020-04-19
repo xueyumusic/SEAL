@@ -315,6 +315,8 @@ if(SEAL_USE_ZLIB)
     endif()
 endif()
 
+find_package(zstd MODULE)
+
 # Set the sealnetnative dynamic library file names to be included in creating
 # the NuGet package. When building a multi-platform package, all three paths
 # should be included.
@@ -393,6 +395,8 @@ if(SEAL_USE_ZLIB)
     # Link ZLIB::ZLIB with seal
     target_link_libraries(seal PRIVATE ZLIB::ZLIB)
 endif()
+
+target_link_libraries(seal PUBLIC zstd::zstd)
 
 # Associate seal to export SEALTargets
 install(TARGETS seal EXPORT SEALTargets

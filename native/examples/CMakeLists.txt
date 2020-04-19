@@ -25,5 +25,8 @@ find_package(SEAL 3.4.5 EXACT REQUIRED
     PATHS ${SEALExamples_SOURCE_DIR}/../src/cmake
 )
 
+find_package(zstd MODULE)
+
 # Link Microsoft SEAL
 target_link_libraries(sealexamples SEAL::seal)
+target_link_libraries(sealexamples zstd::zstd)
