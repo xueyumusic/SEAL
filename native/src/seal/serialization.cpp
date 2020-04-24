@@ -707,6 +707,27 @@ namespace seal
                     break;
                 }
 #endif
+            case compr_mode_type::zstd:
+                {
+                    auto compr_size = header.size - (stream.tellg() - stream_start_pos);
+                    cout<<"##size:"<<header.size<<":"<<compr_size<<endl;
+                    // We don't know the decompressed size, but use compr_size as
+                    // starting point for the buffer.
+                    SafeByteBuffer safe_buffer(safe_cast<streamsize>(compr_size));
+
+                    iostream temp_stream(&safe_buffer);
+                    temp_stream.exceptions(ios_base::badbit | ios_base::failbit);
+
+                    constexpr int Z_OK = 0;
+                    if (ztools::inflate_stream2(
+                        stream, compr_size, temp_stream,
+                        MemoryManager::GetPool(mm_prof_opt::FORCE_NEW, true)) != Z_OK)
+                    {
+                        throw logic_error("stream inflate failed");
+                    }
+                    load_members(temp_stream);
+                    break;
+                }
             default:
                 throw invalid_argument("unsupported compression mode");
             }

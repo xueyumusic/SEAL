@@ -116,7 +116,15 @@ void example_ckks_basics()
     Plaintext x_plain;
     encoder.encode(input, scale, x_plain);
     Ciphertext x1_encrypted;
+    Ciphertext x2_encrypted;
     encryptor.encrypt(x_plain, x1_encrypted);
+    cout<< "##cipher pos1:" << x1_encrypted.poly_modulus_degree() << ":" << x1_encrypted.coeff_mod_count() << endl;
+    x1_encrypted.save(out2, compr_mode_type::zstd);
+    cout<<"##enc over" << endl;
+    ifstream out3("out2.txt",ios::in);
+    x2_encrypted.load(context, out3);
+    cout<< "##cipher pos2:" << x2_encrypted.poly_modulus_degree() << ":" << x2_encrypted.coeff_mod_count() << endl;
+
     //x1_encrypted.save(out);
     /**
      * 测试结果，
@@ -132,6 +140,7 @@ void example_ckks_basics()
      * 
      * zstd比zlib有非常大的优势
      */
+    /*
     time_t now = time(0);
     cout<<"##pos1:"<<now<<endl;
     for (int i = 0; i < 10000; i ++) {
@@ -146,6 +155,7 @@ void example_ckks_basics()
     x1_encrypted.save(out2, compr_mode_type::zstd);
     }
     cout<<"##pos4:"<<time(0)<<endl;
+    */
 
 
 

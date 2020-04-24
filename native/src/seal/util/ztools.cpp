@@ -153,6 +153,69 @@ namespace seal
                 return Z_OK;
             }
 
+            int inflate_stream2(istream &in_stream,
+                streamoff in_size, ostream &out_stream,
+                MemoryPoolHandle pool)
+            {
+                // Clear the exception masks; this function returns an error code
+                // on failure rather than throws an IO exception.
+                auto in_stream_except_mask = in_stream.exceptions();
+                in_stream.exceptions(ios_base::goodbit);
+                auto out_stream_except_mask = out_stream.exceptions();
+                out_stream.exceptions(ios_base::goodbit);
+
+                auto in_stream_start_pos = in_stream.tellg();
+                auto in_stream_end_pos = in_stream_start_pos + in_size;
+
+                int result;
+                size_t have;
+                size_t read;
+
+                size_t const buffInSize = ZSTD_DStreamInSize();
+                auto in(allocate<unsigned char>(buffInSize, pool));
+                size_t const buffOutSize = ZSTD_DStreamOutSize();
+                auto out(allocate<unsigned char>(buffOutSize, pool));
+
+                ZSTD_DCtx* const dctx = ZSTD_createDCtx();
+
+                do
+                {
+                    if (!in_stream.read(reinterpret_cast<char*>(in.get()),
+                        min(static_cast<streamoff>(buffInSize),
+                            in_stream_end_pos - in_stream.tellg())))
+                    {
+                        cout<<"##posa1"<<endl;
+                        in_stream.exceptions(in_stream_except_mask);
+                        out_stream.exceptions(out_stream_except_mask);
+                        return -1;
+                    }
+                    if (!( read = in_stream.gcount()))
+                    {
+                        break;
+                    }
+
+                    ZSTD_inBuffer input = { in.get(), read, 0 };
+                    while (input.pos<input.size)
+                    {
+                        ZSTD_outBuffer output = { out.get(), buffOutSize, 0 };
+                        size_t const ret = ZSTD_decompressStream(dctx, &output , &input);
+
+                        if (!out_stream.write(reinterpret_cast<const char*>(out.get()),
+                            static_cast<streamsize>(output.pos)))
+                        {
+                            cout<<"##posa2"<<endl;
+                            in_stream.exceptions(in_stream_except_mask);
+                            out_stream.exceptions(out_stream_except_mask);
+                            return -1;
+                        }
+                    }
+                } while (read>0);
+
+                in_stream.exceptions(in_stream_except_mask);
+                out_stream.exceptions(out_stream_except_mask);
+                return 0;
+            }
+
             int inflate_stream(istream &in_stream,
                 streamoff in_size, ostream &out_stream,
                 MemoryPoolHandle pool)
